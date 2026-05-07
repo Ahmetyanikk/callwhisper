@@ -72,23 +72,38 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
     try:
         while True:
-            raw = await websocket.receive_text()
-            logger.info("ws received: %s", raw)
+            message = await websocket.receive()
 
-            try:
-                data = json.loads(raw)
-                msg = PingMessage.model_validate(data)
-            except (json.JSONDecodeError, ValidationError) as exc:
-                await websocket.send_text(
-                    ErrorMessage(message=str(exc)).model_dump_json()
+            if message["type"] == "websocket.disconnect":
+                break
+
+            msg_bytes = message.get("bytes")
+            msg_text = message.get("text")
+
+            if isinstance(msg_bytes, (bytes, bytearray)) and msg_bytes:
+                tag = msg_bytes[0]
+                payload_len = len(msg_bytes) - 1
+                label = "REP" if tag == 0x01 else "PROSPECT"
+                logger.info("[%s] %d bytes", label, payload_len)
+
+            elif isinstance(msg_text, str) and msg_text:
+                logger.info("ws received: %s", msg_text)
+                try:
+                    data = json.loads(msg_text)
+                    ping = PingMessage.model_validate(data)
+                except (json.JSONDecodeError, ValidationError) as exc:
+                    await websocket.send_text(
+                        ErrorMessage(message=str(exc)).model_dump_json()
+                    )
+                    continue
+
+                reply = EchoMessage(
+                    received=ping.model_dump(),
+                    server_ts=int(time.time() * 1000),
                 )
-                continue
-
-            reply = EchoMessage(
-                received=msg.model_dump(),
-                server_ts=int(time.time() * 1000),
-            )
-            await websocket.send_text(reply.model_dump_json())
+                await websocket.send_text(reply.model_dump_json())
 
     except WebSocketDisconnect:
+        pass
+    finally:
         logger.info("ws disconnected: %s", client_id)
