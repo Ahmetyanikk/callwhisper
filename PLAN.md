@@ -8,9 +8,9 @@ Read `CLAUDE.md` first for conventions and scope rules. This file tells you *wha
 
 ## Current status
 
-- **Clock:** not started
-- **Hour:** 0 of 48
-- **Current session:** Session 0 (pre-kickoff setup)
+- **Clock:** started Thu Apr 30, 14:00 Istanbul time
+- **Hour:** 3.5 of 48
+- **Current session:** Session 1 complete, moving to Session 2
 - **Minimum bar status:** ⬜ audio capture · ⬜ live transcript w/ labels · ⬜ coaching suggestions · ⬜ demo video
 - **Blocker:** none
 
@@ -236,6 +236,14 @@ Append an entry here after every session. Keep it honest — this is for you, no
 - Broke:
 - Learned:
 - Next:
+
+---
+
+### Session 1 — Scaffolding (hour 0 → 3.5)
+- Done: cleaned up messy git history (3 root "first commit" + "test" → 3 conventional commits), scaffolded FastAPI server with /health and /ws JSON ping/echo, vanilla JS frontend with two-panel layout and WebSocket handshake, lifespan context manager, Pydantic schemas inline, mypy --strict clean, pushed to GitHub
+- Broke: rejected first __init__.py write by accident (recovered immediately); had stale staging from pre-kickoff that needed history reset
+- Learned: scope discipline check on @app.on_event deprecation paid off — single approved refactor, no creep; pre-session context confirmation prompt prevents Claude Code from jumping to code; git status shows .env is properly ignored
+- Next: Session 2 — audio capture end-to-end
 
 ---
 
