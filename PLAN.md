@@ -9,9 +9,9 @@ Read `CLAUDE.md` first for conventions and scope rules. This file tells you *wha
 ## Current status
 
 - **Clock:** started Thu Apr 30, 14:00 Istanbul time
-- **Hour:** 3.5 of 48
-- **Current session:** Session 1 complete, moving to Session 2
-- **Minimum bar status:** ⬜ audio capture · ⬜ live transcript w/ labels · ⬜ coaching suggestions · ⬜ demo video
+- **Hour:** 5 of 48
+- **Current session:** Session 2 complete, moving to Session 3
+- **Minimum bar status:** 🟡 audio capture (frames flowing, not yet to Deepgram) · ⬜ live transcript w/ labels · ⬜ coaching suggestions · ⬜ demo video
 - **Blocker:** none
 
 Update the three lines above at the start and end of every session.
@@ -244,6 +244,14 @@ Append an entry here after every session. Keep it honest — this is for you, no
 - Broke: rejected first __init__.py write by accident (recovered immediately); had stale staging from pre-kickoff that needed history reset
 - Learned: scope discipline check on @app.on_event deprecation paid off — single approved refactor, no creep; pre-session context confirmation prompt prevents Claude Code from jumping to code; git status shows .env is properly ignored
 - Next: Session 2 — audio capture end-to-end
+
+---
+
+### Session 2 — Audio capture end-to-end (hour 3.5 → 5)
+- Done: dual getUserMedia for mic + VB-Cable, AudioWorklet processor with average-pooling downsampling (48kHz → 16kHz, ratio 3.0), binary frame protocol with channel tags, pending queue with overflow handling, device picker fallback, server receive loop handling text/binary, browser tested and verified — both channels flowing at ~10 frames/sec interleaved with no drops
+- Broke: nothing material — initial Claude Code plan used nearest-neighbor downsampling which would have caused aliasing; corrected to average pooling pre-implementation
+- Learned: average pooling provides built-in low-pass filtering for free; AudioWorklet sampleRate global handles device variability cleanly; binary + text in single WebSocket via FastAPI receive() works without ceremony
+- Next: Session 3 — Deepgram streaming integration
 
 ---
 
