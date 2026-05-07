@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CallWhisper — Capture Test</title>
+  <style>
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: #0b0d10;
+      color: #e7ecf0;
+      margin: 0;
+      padding: 2rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 1.4rem; font-weight: 600; margin: 0 0 0.5rem; }
+    p.lead { color: #9aa4ae; margin: 0 0 2rem; }
+    .channel {
+      background: #14181d;
+      border: 1px solid #232930;
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .channel h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 0 0 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .channel .status {
+      font-size: 0.75rem;
+      color: #9aa4ae;
+      font-weight: 400;
+    }
+    canvas {
+      width: 100%;
+      height: 80px;
+      background: #0b0d10;
+      border-radius: 6px;
+      display: block;
+    }
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: 0;
+      border-radius: 6px;
+      padding: 0.6rem 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    button.secondary { background: #232930; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    select {
+      background: #14181d;
+      color: #e7ecf0;
+      border: 1px solid #232930;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-size: 0.85rem;
+    }
+    .device-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+    }
+    .device-row label { color: #9aa4ae; min-width: 130px; }
+    .ok { color: #4ade80; }
+    .warn { color: #fbbf24; }
+    .err { color: #f87171; }
+  </style>
+</head>
+<body>
+  <h1>CallWhisper — Capture Test</h1>
+  <p class="lead">
+    Verify that mic (Rep) and VB-Cable (Prospect) are both being captured.
+    Speak for the mic. Play any audio through your speakers for VB-Cable.
+  </p>
+
+  <div class="controls">
+    <button id="start">Start test</button>
+    <button id="stop" class="secondary" disabled>Stop</button>
+  </div>
+
+  <div class="channel">
+    <h2>
+      Rep channel (microphone)
+      <span class="status" id="rep-status">idle</span>
+    </h2>
+    <canvas id="rep-canvas"></canvas>
+    <div class="device-row">
+      <label for="rep-device">Input device:</label>
+      <select id="rep-device"></select>
+    </div>
+  </div>
+
+  <div class="channel">
+    <h2>
+      Prospect channel (VB-Cable / BlackHole)
+      <span class="status" id="prospect-status">idle</span>
+    </h2>
+    <canvas id="prospect-canvas"></canvas>
+    <div class="device-row">
+      <label for="prospect-device">Input device:</label>
+      <select id="prospect-device"></select>
+    </div>
+  </div>
+
+  <p class="lead" style="margin-top: 2rem; font-size: 0.85rem;">
+    <strong>Expected:</strong> top waveform reacts when you speak.
+    Bottom waveform reacts when anything plays through your speakers.
+    If the bottom is flat, Windows sound output isn't routed through VB-Cable —
+    check Voicemeeter.
+  </p>
+
+  <script>
+    const repStatus = document.getElementById('rep-status');
+    const prospectStatus = document.getElementById('prospect-status');
+    const startBtn = document.getElementById('start');
+    const stopBtn = document.getElementById('stop');
+    const repSelect = document.getElementById('rep-device');
+    const prospectSelect = document.getElementById('prospect-device');
+
+    let repCtx, prospectCtx;
+    let repStream, prospectStream;
+    let raf;
+
+    async function populateDevices() {
+      try {
+        const probe = await navigator.mediaDevices.getUserMedia({ audio: true });
+        probe.getTracks().forEach(t => t.stop());
+      } catch (e) {
+        repStatus.textContent = 'mic permission denied';
+        repStatus.className = 'status err';
+        return;
+      }
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const inputs = devices.filter(d => d.kind === 'audioinput');
+
+      for (const sel of [repSelect, prospectSelect]) {
+        sel.innerHTML = '';
+        for (const d of inputs) {
+          const opt = document.createElement('option');
+          opt.value = d.deviceId;
+          opt.textContent = d.label || `Input ${d.deviceId.slice(0, 6)}`;
+          sel.appendChild(opt);
+        }
+      }
+
+      const vbcable = inputs.find(d => /cable output|blackhole/i.test(d.label));
+      const defaultMic = inputs.find(d => d.deviceId === 'default');
+      if (defaultMic) repSelect.value = defaultMic.deviceId;
+      if (vbcable) prospectSelect.value = vbcable.deviceId;
+      else prospectStatus.textContent = 'VB-Cable / BlackHole not found';
+    }
+
+    function drawWaveform(canvas, analyser, label) {
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width = canvas.clientWidth * devicePixelRatio;
+      const height = canvas.height = canvas.clientHeight * devicePixelRatio;
+      const buf = new Uint8Array(analyser.fftSize);
+
+      function render() {
+        analyser.getByteTimeDomainData(buf);
+        ctx.fillStyle = '#0b0d10';
+        ctx.fillRect(0, 0, width, height);
+        ctx.lineWidth = 2 * devicePixelRatio;
+        ctx.strokeStyle = label === 'rep' ? '#4ade80' : '#60a5fa';
+        ctx.beginPath();
+        const slice = width / buf.length;
+        let x = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = buf[i] / 128.0;
+          const y = (v * height) / 2;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+          x += slice;
+        }
+        ctx.lineTo(width, height / 2);
+        ctx.stroke();
+      }
+      return render;
+    }
+
+    async function start() {
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+
+      try {
+        repStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            deviceId: { exact: repSelect.value },
+            echoCancellation: true,
+            noiseSuppression: true,
+          },
+        });
+        repStatus.textContent = 'live';
+        repStatus.className = 'status ok';
+      } catch (e) {
+        repStatus.textContent = `error: ${e.message}`;
+        repStatus.className = 'status err';
+      }
+
+      try {
+        prospectStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            deviceId: { exact: prospectSelect.value },
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
+        });
+        prospectStatus.textContent = 'live';
+        prospectStatus.className = 'status ok';
+      } catch (e) {
+        prospectStatus.textContent = `error: ${e.message}`;
+        prospectStatus.className = 'status err';
+      }
+
+      const renderers = [];
+
+      if (repStream) {
+        repCtx = new AudioContext();
+        const src = repCtx.createMediaStreamSource(repStream);
+        const analyser = repCtx.createAnalyser();
+        analyser.fftSize = 1024;
+        src.connect(analyser);
+        renderers.push(drawWaveform(document.getElementById('rep-canvas'), analyser, 'rep'));
+      }
+
+      if (prospectStream) {
+        prospectCtx = new AudioContext();
+        const src = prospectCtx.createMediaStreamSource(prospectStream);
+        const analyser = prospectCtx.createAnalyser();
+        analyser.fftSize = 1024;
+        src.connect(analyser);
+        renderers.push(drawWaveform(document.getElementById('prospect-canvas'), analyser, 'prospect'));
+      }
+
+      function loop() {
+        for (const r of renderers) r();
+        raf = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    function stop() {
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      cancelAnimationFrame(raf);
+      [repStream, prospectStream].forEach(s => s && s.getTracks().forEach(t => t.stop()));
+      [repCtx, prospectCtx].forEach(c => c && c.close());
+      repStream = prospectStream = repCtx = prospectCtx = null;
+      repStatus.textContent = 'idle';
+      repStatus.className = 'status';
+      prospectStatus.textContent = 'idle';
+      prospectStatus.className = 'status';
+    }
+
+    startBtn.addEventListener('click', start);
+    stopBtn.addEventListener('click', stop);
+
+    populateDevices();
+  </script>
+</body>
+</html>
