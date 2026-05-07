@@ -10,8 +10,8 @@ Read `CLAUDE.md` first for conventions and scope rules. This file tells you *wha
 
 - **Clock:** started Thu Apr 30, 14:00 Istanbul time
 - **Hour:** 5 of 48
-- **Current session:** Session 2 complete, moving to Session 3
-- **Minimum bar status:** 🟡 audio capture (frames flowing, not yet to Deepgram) · ⬜ live transcript w/ labels · ⬜ coaching suggestions · ⬜ demo video
+- **Current session:** Session 3 complete, moving to Session 4
+- **Minimum bar status:** 🟡 audio capture (frames flowing, not yet to Deepgram) · 🟡 Deepgram client built (needs browser verification) · ⬜ coaching suggestions · ⬜ demo video
 - **Blocker:** none
 
 Update the three lines above at the start and end of every session.
@@ -252,6 +252,14 @@ Append an entry here after every session. Keep it honest — this is for you, no
 - Broke: nothing material — initial Claude Code plan used nearest-neighbor downsampling which would have caused aliasing; corrected to average pooling pre-implementation
 - Learned: average pooling provides built-in low-pass filtering for free; AudioWorklet sampleRate global handles device variability cleanly; binary + text in single WebSocket via FastAPI receive() works without ceremony
 - Next: Session 3 — Deepgram streaming integration
+
+---
+
+### Session 3 — Deepgram streaming integration (hour 5 → ?)
+- Done: server/schemas.py (TranscriptMessage + moved PingMessage/EchoMessage/ErrorMessage), server/deepgram_client.py (DeepgramStream — asyncio.Queue[bytes] maxsize=200, exponential backoff max 5 attempts, keepalive every 8s, async for receive loop, _send_loop with 1s timeout), server/main.py (single out_queue + one sender task, on_transcript closure, both streams started on WS connect, closed in finally), client/app.js (renderTranscript with interim/final in-place replacement), client/styles.css (rep green, prospect blue, interim opacity), mypy --strict: 4 files clean
+- Broke: nothing — LF→CRLF git warnings are cosmetic only
+- Learned: TypeAlias for Callable with Literal params passes mypy --strict without issue; single out_queue pattern avoids concurrent websocket.send_text; websockets 13 asyncio API uses additional_headers (not extra_headers)
+- Next: browser verification — speak into mic, confirm "Rep:" appears in left panel within 2s; then Session 4 coaching engine
 
 ---
 

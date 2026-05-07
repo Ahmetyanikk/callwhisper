@@ -12,6 +12,9 @@ const coachingLog = document.querySelector("#coaching-log");
 let ws = null;
 const pending = { rep: [], prospect: [] };
 
+// Tracks the in-progress interim element per channel so finals replace them.
+const interim = { rep: null, prospect: null };
+
 function appendTranscript(text) {
   const p = document.createElement("p");
   p.textContent = text;
@@ -27,6 +30,36 @@ function appendCoaching(text) {
 
 function nowHHMMSS() {
   return new Date().toTimeString().slice(0, 8);
+}
+
+function renderTranscript(msg) {
+  const ch = msg.channel;
+  const label = ch === "rep" ? "Rep" : "Prospect";
+  const ts = new Date(msg.ts).toTimeString().slice(0, 8);
+  const content = `[${ts}] ${label}: ${msg.text}`;
+
+  if (!msg.is_final) {
+    if (interim[ch]) {
+      interim[ch].textContent = content;
+    } else {
+      const p = document.createElement("p");
+      p.className = `transcript-${ch} transcript-interim`;
+      p.textContent = content;
+      transcriptLog.appendChild(p);
+      interim[ch] = p;
+    }
+    transcriptLog.scrollTop = transcriptLog.scrollHeight;
+  } else {
+    if (interim[ch]) {
+      interim[ch].remove();
+      interim[ch] = null;
+    }
+    const p = document.createElement("p");
+    p.className = `transcript-${ch} transcript-final`;
+    p.textContent = content;
+    transcriptLog.appendChild(p);
+    transcriptLog.scrollTop = transcriptLog.scrollHeight;
+  }
 }
 
 function flushPending() {
@@ -119,8 +152,13 @@ function openWebSocket() {
   ws.addEventListener("message", (event) => {
     if (typeof event.data !== "string") return;
     const msg = JSON.parse(event.data);
-    if (msg.kind === "echo") appendCoaching(`Echo received: ${msg.received.ts}`);
-    else if (msg.kind === "error") appendTranscript(`Error: ${msg.message}`);
+    if (msg.kind === "transcript") {
+      renderTranscript(msg);
+    } else if (msg.kind === "echo") {
+      appendTranscript(`Status: server echo ok at ${nowHHMMSS()}`);
+    } else if (msg.kind === "error") {
+      appendTranscript(`Error: ${msg.message}`);
+    }
   });
 
   ws.addEventListener("close", () => {

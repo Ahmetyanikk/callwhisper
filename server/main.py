@@ -1,20 +1,21 @@
-"""
-CallWhisper server — Session 1 scaffold.
-FastAPI app with health check and WebSocket echo endpoint.
-"""
+"""CallWhisper server — FastAPI app with health check and WebSocket endpoint."""
 
-import itertools
+import asyncio
 import json
 import logging
 import os
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any, Literal
+from itertools import count
+from typing import Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
+
+from server.deepgram_client import DeepgramStream
+from server.schemas import EchoMessage, ErrorMessage, PingMessage, TranscriptMessage
 
 load_dotenv()
 
@@ -24,23 +25,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("callwhisper")
 
-_client_ids = itertools.count(1)
-
-
-class PingMessage(BaseModel):
-    kind: Literal["ping"]
-    ts: int
-
-
-class EchoMessage(BaseModel):
-    kind: Literal["echo"] = "echo"
-    received: dict[str, Any]
-    server_ts: int
-
-
-class ErrorMessage(BaseModel):
-    kind: Literal["error"] = "error"
-    message: str
+_client_ids = count(1)
 
 
 @asynccontextmanager
@@ -70,6 +55,43 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     await websocket.accept()
     logger.info("ws connected: %s", client_id)
 
+    # Single queue + one sender task prevents concurrent websocket.send_text calls.
+    out_queue: asyncio.Queue[str] = asyncio.Queue()
+
+    async def on_transcript(
+        channel: Literal["rep", "prospect"],
+        text: str,
+        is_final: bool,
+        start_ms: int,
+    ) -> None:
+        msg = TranscriptMessage(
+            channel=channel,
+            text=text,
+            is_final=is_final,
+            ts=int(time.time() * 1000),
+            start_ms=start_ms,
+        )
+        await out_queue.put(msg.model_dump_json())
+
+    async def sender() -> None:
+        try:
+            while True:
+                payload = await out_queue.get()
+                await websocket.send_text(payload)
+        except (asyncio.CancelledError, WebSocketDisconnect):
+            pass
+
+    api_key = os.getenv("DEEPGRAM_API_KEY", "")
+    rep_stream = DeepgramStream(
+        api_key=api_key, channel="rep", on_transcript=on_transcript
+    )
+    prospect_stream = DeepgramStream(
+        api_key=api_key, channel="prospect", on_transcript=on_transcript
+    )
+    rep_stream.start()
+    prospect_stream.start()
+    sender_task = asyncio.create_task(sender(), name=f"ws-sender-{client_id}")
+
     try:
         while True:
             message = await websocket.receive()
@@ -82,28 +104,32 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
             if isinstance(msg_bytes, (bytes, bytearray)) and msg_bytes:
                 tag = msg_bytes[0]
-                payload_len = len(msg_bytes) - 1
-                label = "REP" if tag == 0x01 else "PROSPECT"
-                logger.info("[%s] %d bytes", label, payload_len)
+                payload = bytes(msg_bytes[1:])
+                if tag == 0x01:
+                    await rep_stream.send_audio(payload)
+                elif tag == 0x02:
+                    await prospect_stream.send_audio(payload)
+                else:
+                    logger.warning("unknown channel tag: 0x%02x", tag)
 
             elif isinstance(msg_text, str) and msg_text:
-                logger.info("ws received: %s", msg_text)
                 try:
                     data = json.loads(msg_text)
                     ping = PingMessage.model_validate(data)
-                except (json.JSONDecodeError, ValidationError) as exc:
-                    await websocket.send_text(
-                        ErrorMessage(message=str(exc)).model_dump_json()
+                    reply = EchoMessage(
+                        received=ping.model_dump(),
+                        server_ts=int(time.time() * 1000),
                     )
-                    continue
-
-                reply = EchoMessage(
-                    received=ping.model_dump(),
-                    server_ts=int(time.time() * 1000),
-                )
-                await websocket.send_text(reply.model_dump_json())
+                    await out_queue.put(reply.model_dump_json())
+                except (json.JSONDecodeError, ValidationError) as exc:
+                    await out_queue.put(ErrorMessage(message=str(exc)).model_dump_json())
 
     except WebSocketDisconnect:
         pass
     finally:
+        await asyncio.gather(
+            rep_stream.close(), prospect_stream.close(), return_exceptions=True
+        )
+        sender_task.cancel()
+        await asyncio.gather(sender_task, return_exceptions=True)
         logger.info("ws disconnected: %s", client_id)

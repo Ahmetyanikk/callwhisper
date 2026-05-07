@@ -69,3 +69,8 @@ section h2 {
 }
 
 p { font-size: 0.9rem; line-height: 1.5; color: #d1d5db; }
+
+.transcript-rep { color: #22c55e; }
+.transcript-prospect { color: #3b82f6; }
+.transcript-interim { opacity: 0.55; font-style: italic; }
+.transcript-ts { font-family: monospace; font-size: 0.82em; color: #9ca3af; }
