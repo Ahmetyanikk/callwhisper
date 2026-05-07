@@ -34,10 +34,30 @@ function appendTranscript(text) {
   transcriptLog.scrollTop = transcriptLog.scrollHeight;
 }
 
-function appendCoaching(text) {
-  const p = document.createElement("p");
-  p.textContent = text;
-  coachingLog.prepend(p);
+function renderSuggestion(msg) {
+  const card = document.createElement("div");
+  card.className = "suggestion-card";
+
+  const ts = document.createElement("span");
+  ts.className = "suggest-ts";
+  ts.textContent = `[${new Date(msg.ts).toTimeString().slice(0, 8)}]`;
+  card.appendChild(ts);
+
+  const fields = [
+    { key: "say_this",  cls: "suggest-say",   label: "Say this" },
+    { key: "ask_this",  cls: "suggest-ask",   label: "Ask this" },
+    { key: "watch_out", cls: "suggest-watch", label: "Watch out" },
+  ];
+  for (const { key, cls, label } of fields) {
+    if (!msg[key]) continue;
+    const p = document.createElement("p");
+    p.className = cls;
+    p.textContent = `${label}: ${msg[key]}`;
+    card.appendChild(p);
+  }
+
+  coachingLog.prepend(card);
+  while (coachingLog.children.length > 10) coachingLog.lastChild.remove();
 }
 
 function nowHHMMSS() {
@@ -198,6 +218,8 @@ function openWebSocket() {
     const msg = JSON.parse(event.data);
     if (msg.kind === "transcript") {
       renderTranscript(msg);
+    } else if (msg.kind === "suggestion") {
+      renderSuggestion(msg);
     } else if (msg.kind === "echo") {
       appendTranscript(`Status: server echo ok at ${nowHHMMSS()}`);
     } else if (msg.kind === "error") {

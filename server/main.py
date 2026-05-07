@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
+from server.coaching import CoachingEngine
 from server.deepgram_client import DeepgramStream
 from server.schemas import EchoMessage, ErrorMessage, PingMessage, TranscriptMessage
 
@@ -58,6 +59,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
     # Single queue + one sender task prevents concurrent websocket.send_text calls.
     out_queue: asyncio.Queue[str] = asyncio.Queue()
+    coaching_engine = CoachingEngine(
+        api_key=os.getenv("ANTHROPIC_API_KEY", ""), out_queue=out_queue
+    )
 
     async def on_transcript(
         channel: Literal["rep", "prospect"],
@@ -73,6 +77,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             start_ms=start_ms,
         )
         await out_queue.put(msg.model_dump_json())
+        if is_final:
+            speaker = "Rep" if channel == "rep" else "Prospect"
+            await coaching_engine.add_transcript(speaker, text, int(time.time() * 1000))
 
     async def sender() -> None:
         try:
@@ -91,6 +98,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     )
     rep_stream.start()
     prospect_stream.start()
+    coaching_engine.start()
     sender_task = asyncio.create_task(sender(), name=f"ws-sender-{client_id}")
 
     frame_counts: dict[str, int] = {"rep": 0, "prospect": 0}
@@ -137,7 +145,10 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         pass
     finally:
         await asyncio.gather(
-            rep_stream.close(), prospect_stream.close(), return_exceptions=True
+            rep_stream.close(),
+            prospect_stream.close(),
+            coaching_engine.close(),
+            return_exceptions=True,
         )
         sender_task.cancel()
         await asyncio.gather(sender_task, return_exceptions=True)

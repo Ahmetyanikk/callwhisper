@@ -9,9 +9,9 @@ Read `CLAUDE.md` first for conventions and scope rules. This file tells you *wha
 ## Current status
 
 - **Clock:** started Thu Apr 30, 14:00 Istanbul time
-- **Hour:** 10.5 of 48
-- **Current session:** Session 3 complete, moving to Session 4
-- **Minimum bar status:** ✅ audio capture · ✅ live transcript w/ labels · ⬜ coaching suggestions · ⬜ demo video
+- **Hour:** 11.5 of 48
+- **Current session:** Session 4 complete, next is sleep then Session 5
+- **Minimum bar status:** ✅ audio capture · ✅ live transcript w/ labels · ✅ coaching suggestions · ⬜ demo video
 - **Blocker:** none
 
 Update the three lines above at the start and end of every session.
@@ -260,6 +260,14 @@ Append an entry here after every session. Keep it honest — this is for you, no
 - Broke: spent ~2h debugging RMS=0 (silent frames). Root cause was Voicemeeter routing: Windows default output had to be CABLE Input, prospect channel had to read from CABLE Output. Once routed correctly, Deepgram returned accurate transcripts immediately.
 - Learned: device picker fallback was essential — auto-detect by regex isn't enough on Windows where users may have many similarly-named virtual audio devices. Test button per channel with live RMS lets users verify capture before starting a real session. Production-grade pattern.
 - Next: Session 4 — Claude coaching engine
+
+---
+
+### Session 4 — Claude coaching engine (hour 10.5 → 11.5)
+- Done: server/prompt.py with SYSTEM_PROMPT constant copied from docs/coaching-prompt.md, server/coaching.py with CoachingEngine class (90s rolling buffer, 7s asyncio debounce, 4s minimum gap between Claude calls, critical-moment regex bypass for objection/stall/competitor/authority/timing patterns), schemas.py extended with flat SuggestionMessage (say_this/ask_this/watch_out optional), main.py wires one CoachingEngine per WS session and routes finals to engine.add_transcript, client renders suggestions in right panel with green/blue/amber color coding, max 10 visible.
+- Verified: 30s mock dialogue with objection phrases ("disaster", "expensive") produced 2 suggestion cards. First card: tied budget objection to agency-burn signal, gave specific say_this + ask_this + watch_out. Second card: detected garbled prospect audio and warned the rep instead of fabricating coaching. Latency: 3s on critical-moment trigger, ~10s on debounce — both inside SOW 5-10s spec.
+- Notes: prompt grounding is working — Claude refused to invent Optimum7 facts and instead alerted on bad audio feed. The "silence is a feature" rule + "never invent facts" rule are doing real work.
+- Next: sleep, then Session 5 — UI polish + critical-moment end-to-end verification + Stop session edge cases.
 
 ---
 

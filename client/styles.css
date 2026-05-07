@@ -129,3 +129,18 @@ p { font-size: 0.9rem; line-height: 1.5; color: #d1d5db; }
 .transcript-prospect { color: #3b82f6; }
 .transcript-interim { opacity: 0.55; font-style: italic; }
 .transcript-ts { font-family: monospace; font-size: 0.82em; color: #9ca3af; }
+
+.suggestion-card {
+  border-left: 3px solid #374151;
+  padding: 8px 12px;
+  background: #1a1a1a;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.suggest-ts  { font-size: 0.75rem; color: #6b7280; font-family: monospace; }
+.suggest-say   { color: #22c55e; }
+.suggest-ask   { color: #3b82f6; }
+.suggest-watch { color: #f59e0b; }

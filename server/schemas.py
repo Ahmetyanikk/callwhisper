@@ -26,3 +26,11 @@ class TranscriptMessage(BaseModel):
     is_final: bool
     ts: int       # server wall-clock ms
     start_ms: int  # Deepgram word-start offset ms
+
+
+class SuggestionMessage(BaseModel):
+    kind: Literal["suggestion"] = "suggestion"
+    say_this: str | None = None
+    ask_this: str | None = None
+    watch_out: str | None = None
+    ts: int
