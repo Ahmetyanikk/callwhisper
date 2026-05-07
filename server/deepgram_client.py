@@ -129,6 +129,7 @@ class DeepgramStream:
             )
 
     async def _send_loop(self, ws: ClientConnection) -> None:
+        sent = 0
         try:
             while True:
                 try:
@@ -136,6 +137,9 @@ class DeepgramStream:
                 except asyncio.TimeoutError:
                     continue
                 await ws.send(frame)
+                sent += 1
+                if sent % 50 == 0:
+                    logger.info("[%s] sent %d frames, queue=%d", self.channel, sent, self._queue.qsize())
         except (asyncio.CancelledError, ConnectionClosed):
             pass
 

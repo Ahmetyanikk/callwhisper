@@ -1,19 +1,31 @@
 const WS_URL = "ws://localhost:4000/ws";
 const MAX_PENDING_FRAMES = 200;
 
-const btnStart = document.querySelector("#btn-start");
-const btnConfirm = document.querySelector("#btn-confirm-devices");
-const devicePicker = document.querySelector("#device-picker");
+const btnToggle = document.querySelector("#btn-toggle");
+const btnTestRep = document.querySelector("#btn-test-rep");
+const btnTestProspect = document.querySelector("#btn-test-prospect");
 const repSelect = document.querySelector("#rep-select");
 const prospectSelect = document.querySelector("#prospect-select");
+const repRmsEl = document.querySelector("#rep-rms");
+const prospectRmsEl = document.querySelector("#prospect-rms");
+const statusIndicator = document.querySelector("#status-indicator");
 const transcriptLog = document.querySelector("#transcript-log");
 const coachingLog = document.querySelector("#coaching-log");
 
 let ws = null;
+let sessionActive = false;
+let repStream = null;
+let prospectStream = null;
+let repCtx = null;
+let prospectCtx = null;
 const pending = { rep: [], prospect: [] };
-
-// Tracks the in-progress interim element per channel so finals replace them.
 const interim = { rep: null, prospect: null };
+
+function setStatus(state) {
+  const labels = { idle: "&#9679; Idle", connecting: "&#9679; Connecting...", live: "&#9679; Live" };
+  statusIndicator.className = `status-${state}`;
+  statusIndicator.innerHTML = labels[state] ?? labels.idle;
+}
 
 function appendTranscript(text) {
   const p = document.createElement("p");
@@ -86,17 +98,6 @@ function sendFrame(tag, pcmBuffer) {
   ws.send(frame.buffer);
 }
 
-async function detectDevices() {
-  const probe = await navigator.mediaDevices.getUserMedia({ audio: true });
-  probe.getTracks().forEach(t => t.stop());
-
-  const all = await navigator.mediaDevices.enumerateDevices();
-  const inputs = all.filter(d => d.kind === "audioinput");
-  const repDev = inputs.find(d => d.deviceId === "default") ?? inputs[0];
-  const prospectDev = inputs.find(d => /cable output|vb-cable|blackhole/i.test(d.label));
-  return { repDev, prospectDev, inputs };
-}
-
 function populateSelect(select, devices) {
   select.innerHTML = "";
   for (const d of devices) {
@@ -107,35 +108,77 @@ function populateSelect(select, devices) {
   }
 }
 
-async function startCapture(repId, prospectId) {
+async function initDevices() {
+  try {
+    const probe = await navigator.mediaDevices.getUserMedia({ audio: true });
+    probe.getTracks().forEach(t => t.stop());
+    const all = await navigator.mediaDevices.enumerateDevices();
+    const inputs = all.filter(d => d.kind === "audioinput");
+    populateSelect(repSelect, inputs);
+    populateSelect(prospectSelect, inputs);
+    const repDev = inputs.find(d => d.deviceId === "default") ?? inputs[0];
+    const prospectDev = inputs.find(d => /cable output|vb-cable|voicemeeter/i.test(d.label));
+    if (repDev) repSelect.value = repDev.deviceId;
+    if (prospectDev) prospectSelect.value = prospectDev.deviceId;
+  } catch (err) {
+    appendTranscript(`Error enumerating devices: ${err.message}`);
+  }
+}
+
+async function testChannel(deviceId, resultEl) {
+  if (sessionActive) { resultEl.textContent = "stop session first"; return; }
+  resultEl.textContent = "testing 3s...";
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { deviceId: { exact: deviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    });
+  } catch (err) {
+    resultEl.textContent = `err: ${err.message}`;
+    return;
+  }
+  const ctx = new AudioContext();
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 2048;
+  ctx.createMediaStreamSource(stream).connect(analyser);
+  const buf = new Float32Array(analyser.fftSize);
+  let peak = 0;
+  const deadline = Date.now() + 3000;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 100));
+    analyser.getFloatTimeDomainData(buf);
+    let ss = 0;
+    for (const s of buf) ss += s * s;
+    const rms = Math.sqrt(ss / buf.length);
+    if (rms > peak) peak = rms;
+  }
+  resultEl.textContent = `peak RMS: ${peak.toFixed(4)}`;
+  stream.getTracks().forEach(t => t.stop());
+  await ctx.close();
+}
+
+async function startCapture() {
   const constraints = (deviceId) => ({
-    audio: {
-      deviceId: { exact: deviceId },
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false,
-    },
+    audio: { deviceId: { exact: deviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
   });
-
-  const [repStream, prospectStream] = await Promise.all([
-    navigator.mediaDevices.getUserMedia(constraints(repId)),
-    navigator.mediaDevices.getUserMedia(constraints(prospectId)),
+  [repStream, prospectStream] = await Promise.all([
+    navigator.mediaDevices.getUserMedia(constraints(repSelect.value)),
+    navigator.mediaDevices.getUserMedia(constraints(prospectSelect.value)),
   ]);
-
   for (const [stream, tag] of [[repStream, 0x01], [prospectStream, 0x02]]) {
-    const label = tag === 0x01 ? "Rep" : "Prospect";
     const ctx = new AudioContext();
+    if (tag === 0x01) repCtx = ctx; else prospectCtx = ctx;
     try {
       await ctx.audioWorklet.addModule("processor.js");
     } catch (err) {
       appendTranscript(`Error: AudioWorklet failed to load — ${err.message}`);
       appendTranscript("Debug: ensure page served over HTTP (not file://), check DevTools console");
-      return;
+      throw err;
     }
     const node = new AudioWorkletNode(ctx, "pcm-processor");
     ctx.createMediaStreamSource(stream).connect(node);
     node.port.onmessage = (e) => sendFrame(tag, e.data);
-    appendTranscript(`${label}: capturing at ${ctx.sampleRate}Hz`);
+    appendTranscript(`${tag === 0x01 ? "Rep" : "Prospect"}: capturing at ${ctx.sampleRate}Hz`);
   }
 }
 
@@ -145,6 +188,7 @@ function openWebSocket() {
 
   ws.addEventListener("open", () => {
     flushPending();
+    setStatus("live");
     appendTranscript(`Status: connected at ${nowHHMMSS()}`);
     ws.send(JSON.stringify({ kind: "ping", ts: Date.now() }));
   });
@@ -162,9 +206,7 @@ function openWebSocket() {
   });
 
   ws.addEventListener("close", () => {
-    appendTranscript(`Status: disconnected at ${nowHHMMSS()}`);
-    btnStart.disabled = false;
-    btnStart.textContent = "Start Session";
+    if (sessionActive) appendTranscript(`Status: disconnected at ${nowHHMMSS()}`);
   });
 
   ws.addEventListener("error", () => {
@@ -172,31 +214,49 @@ function openWebSocket() {
   });
 }
 
-btnStart.addEventListener("click", async () => {
-  btnStart.disabled = true;
-  btnStart.textContent = "Session Active";
+async function stopSession() {
+  sessionActive = false;
+  if (ws) { ws.close(); ws = null; }
+  for (const stream of [repStream, prospectStream]) {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+  }
+  repStream = null;
+  prospectStream = null;
+  for (const ctx of [repCtx, prospectCtx]) {
+    if (ctx && ctx.state !== "closed") await ctx.close();
+  }
+  repCtx = null;
+  prospectCtx = null;
+  pending.rep.length = 0;
+  pending.prospect.length = 0;
+  interim.rep = null;
+  interim.prospect = null;
+  setStatus("idle");
+  btnToggle.textContent = "Start Session";
+  btnToggle.disabled = false;
+}
+
+async function startSession() {
+  btnToggle.disabled = true;
+  setStatus("connecting");
   openWebSocket();
-
   try {
-    const { repDev, prospectDev, inputs } = await detectDevices();
-    if (prospectDev) {
-      await startCapture(repDev.deviceId, prospectDev.deviceId);
-    } else {
-      appendTranscript("VB-Cable / BlackHole not found — select devices manually");
-      populateSelect(repSelect, inputs);
-      populateSelect(prospectSelect, inputs);
-      devicePicker.hidden = false;
-    }
+    await startCapture();
+    sessionActive = true;
+    btnToggle.textContent = "Stop Session";
+    btnToggle.disabled = false;
   } catch (err) {
     appendTranscript(`Error: ${err.message}`);
+    await stopSession();
   }
+}
+
+btnToggle.addEventListener("click", () => {
+  if (!sessionActive) startSession();
+  else stopSession();
 });
 
-btnConfirm.addEventListener("click", async () => {
-  devicePicker.hidden = true;
-  try {
-    await startCapture(repSelect.value, prospectSelect.value);
-  } catch (err) {
-    appendTranscript(`Error: ${err.message}`);
-  }
-});
+btnTestRep.addEventListener("click", () => testChannel(repSelect.value, repRmsEl));
+btnTestProspect.addEventListener("click", () => testChannel(prospectSelect.value, prospectRmsEl));
+
+initDevices();

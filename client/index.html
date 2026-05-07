@@ -8,11 +8,23 @@
 <body>
   <header>
     <h1>CallWhisper</h1>
-    <button id="btn-start">Start Session</button>
-    <div id="device-picker" hidden>
-      <label>Rep mic: <select id="rep-select"></select></label>
-      <label>Prospect: <select id="prospect-select"></select></label>
-      <button id="btn-confirm-devices">Confirm Devices</button>
+    <div id="device-picker">
+      <div class="device-row">
+        <label class="device-label">Rep mic</label>
+        <select id="rep-select"></select>
+        <button id="btn-test-rep" class="btn-secondary">Test</button>
+        <span id="rep-rms" class="rms-result"></span>
+      </div>
+      <div class="device-row">
+        <label class="device-label">Prospect (system audio)</label>
+        <select id="prospect-select"></select>
+        <button id="btn-test-prospect" class="btn-secondary">Test</button>
+        <span id="prospect-rms" class="rms-result"></span>
+      </div>
+    </div>
+    <div class="session-controls">
+      <button id="btn-toggle">Start Session</button>
+      <span id="status-indicator" class="status-idle">&#9679; Idle</span>
     </div>
   </header>
   <main>
