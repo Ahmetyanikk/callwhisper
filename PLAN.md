@@ -9,9 +9,9 @@ Read `CLAUDE.md` first for conventions and scope rules. This file tells you *wha
 ## Current status
 
 - **Clock:** started Thu Apr 30, 14:00 Istanbul time
-- **Hour:** 5 of 48
+- **Hour:** 10.5 of 48
 - **Current session:** Session 3 complete, moving to Session 4
-- **Minimum bar status:** 🟡 audio capture (frames flowing, not yet to Deepgram) · 🟡 Deepgram client built (needs browser verification) · ⬜ coaching suggestions · ⬜ demo video
+- **Minimum bar status:** ✅ audio capture · ✅ live transcript w/ labels · ⬜ coaching suggestions · ⬜ demo video
 - **Blocker:** none
 
 Update the three lines above at the start and end of every session.
@@ -255,11 +255,11 @@ Append an entry here after every session. Keep it honest — this is for you, no
 
 ---
 
-### Session 3 — Deepgram streaming integration (hour 5 → ?)
-- Done: server/schemas.py (TranscriptMessage + moved PingMessage/EchoMessage/ErrorMessage), server/deepgram_client.py (DeepgramStream — asyncio.Queue[bytes] maxsize=200, exponential backoff max 5 attempts, keepalive every 8s, async for receive loop, _send_loop with 1s timeout), server/main.py (single out_queue + one sender task, on_transcript closure, both streams started on WS connect, closed in finally), client/app.js (renderTranscript with interim/final in-place replacement), client/styles.css (rep green, prospect blue, interim opacity), mypy --strict: 4 files clean
-- Broke: nothing — LF→CRLF git warnings are cosmetic only
-- Learned: TypeAlias for Callable with Literal params passes mypy --strict without issue; single out_queue pattern avoids concurrent websocket.send_text; websockets 13 asyncio API uses additional_headers (not extra_headers)
-- Next: browser verification — speak into mic, confirm "Rep:" appears in left panel within 2s; then Session 4 coaching engine
+### Session 3 — Deepgram streaming integration (hour 5 → 10.5)
+- Done: server/schemas.py with TranscriptMessage, server/deepgram_client.py with async per-channel streaming + reconnect + keepalive + frame queue, main.py routing binary frames to Deepgram and TranscriptMessage to browser via outbound queue, client rendering interim/final transcripts with colors, always-visible device picker with Test buttons, Start/Stop toggle. Verified real transcription end-to-end.
+- Broke: spent ~2h debugging RMS=0 (silent frames). Root cause was Voicemeeter routing: Windows default output had to be CABLE Input, prospect channel had to read from CABLE Output. Once routed correctly, Deepgram returned accurate transcripts immediately.
+- Learned: device picker fallback was essential — auto-detect by regex isn't enough on Windows where users may have many similarly-named virtual audio devices. Test button per channel with live RMS lets users verify capture before starting a real session. Production-grade pattern.
+- Next: Session 4 — Claude coaching engine
 
 ---
 
