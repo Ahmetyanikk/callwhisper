@@ -9,9 +9,9 @@ Read `CLAUDE.md` first for conventions and scope rules. This file tells you *wha
 ## Current status
 
 - **Clock:** started Thu Apr 30, 14:00 Istanbul time
-- **Hour:** 11.5 of 48
-- **Current session:** Session 4 complete, next is sleep then Session 5
-- **Minimum bar status:** ✅ audio capture · ✅ live transcript w/ labels · ✅ coaching suggestions · ⬜ demo video
+- **Hour:** ~13.5 of 48
+- **Current session:** Session 5 complete, next is Session 6 (prompt tuning)
+- **Minimum bar status:** ✅ audio · ✅ transcript · ✅ coaching · ⬜ demo video
 - **Blocker:** none
 
 Update the three lines above at the start and end of every session.
@@ -268,6 +268,28 @@ Append an entry here after every session. Keep it honest — this is for you, no
 - Verified: 30s mock dialogue with objection phrases ("disaster", "expensive") produced 2 suggestion cards. First card: tied budget objection to agency-burn signal, gave specific say_this + ask_this + watch_out. Second card: detected garbled prospect audio and warned the rep instead of fabricating coaching. Latency: 3s on critical-moment trigger, ~10s on debounce — both inside SOW 5-10s spec.
 - Notes: prompt grounding is working — Claude refused to invent Optimum7 facts and instead alerted on bad audio feed. The "silence is a feature" rule + "never invent facts" rule are doing real work.
 - Next: sleep, then Session 5 — UI polish + critical-moment end-to-end verification + Stop session edge cases.
+
+---
+
+### Session 5 — UI polish + Stop/Start edge cases (hour 11.5 → 13.5)
+- Done: Stop/Start cycle is clean (no ghost transcripts, no leaked
+  AudioContexts, no panel state pollution). Auto-select on page load:
+  Rep matches default/HyperX/Fifine, Prospect matches CABLE Output
+  with amber warning if absent. Empty state placeholders in both
+  panels. WS disconnect handling: red status + toast banner. Status
+  indicator now a colored CSS dot. Suggestion cards have entrance
+  animation. Diagnostic logs purged from client and server (kept
+  only production-relevant logs).
+- Broke: tried claude-sonnet-4-6 to take advantage of newer model.
+  Sonnet 4.6 was too conservative with our prompt — kept returning
+  empty {} JSON ("silence is a feature" rule applied too strictly).
+  Reverted to claude-sonnet-4-5 which is proven working baseline.
+  Will re-evaluate 4.6 during Session 6 prompt tuning.
+- Learned: model upgrades aren't free. Newer models can have stricter
+  prior-following, which interacts unexpectedly with prompt rules
+  like "stay silent if uncertain". Always test on a real session
+  before assuming a swap is invisible.
+- Next: Session 6 — prompt tuning on real mock calls.
 
 ---
 
