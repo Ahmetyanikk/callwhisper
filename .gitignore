@@ -57,6 +57,9 @@ Desktop.ini
 .claude-sessions/
 .claude/
 
+# ——— Private drafts ———
+_drafts/
+
 # ——— Logs & temp ———
 *.log
 logs/

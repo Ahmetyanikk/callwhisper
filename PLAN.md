@@ -9,10 +9,9 @@ Read `CLAUDE.md` first for conventions and scope rules. This file tells you *wha
 ## Current status
 
 - **Clock:** started Thu Apr 30, 14:00 Istanbul time
-- **Hour:** ~18.5 of 48
-- **Current session:** Session 7 complete, Session 8 next (README + handoff email)
-- **Minimum bar status:** ✅ audio · ✅ transcript · ✅ coaching · ✅ DEMO VIDEO
-- **All four SOW minimum-bar items met. Remaining work is documentation + delivery.**
+- **Hour:** ~21 of 48
+- **Current session:** SHIPPABLE. Email drafted, not yet sent. Plan: review and send Saturday morning ~09:30.
+- **Minimum bar status:** ✅ audio · ✅ transcript · ✅ coaching · ✅ DEMO VIDEO — all four met.
 - **Blocker:** none
 
 Update the three lines above at the start and end of every session.
@@ -269,6 +268,24 @@ Append an entry here after every session. Keep it honest — this is for you, no
 - Verified: 30s mock dialogue with objection phrases ("disaster", "expensive") produced 2 suggestion cards. First card: tied budget objection to agency-burn signal, gave specific say_this + ask_this + watch_out. Second card: detected garbled prospect audio and warned the rep instead of fabricating coaching. Latency: 3s on critical-moment trigger, ~10s on debounce — both inside SOW 5-10s spec.
 - Notes: prompt grounding is working — Claude refused to invent Optimum7 facts and instead alerted on bad audio feed. The "silence is a feature" rule + "never invent facts" rule are doing real work.
 - Next: sleep, then Session 5 — UI polish + critical-moment end-to-end verification + Stop session edge cases.
+
+---
+
+### Session 8 — README rewrite + handoff (hour 18.5 → 21)
+- Done: Full README rewrite emphasizing decisions over implementation
+  ("Big Decisions" section covers model choice, output schema,
+  throttle math, channel-based vs diarization, finals-only buffer,
+  prompt grounding rule). "What's Out of Scope" section makes
+  deliberate cuts explicit. "Limitations" section is honest about
+  Windows-only, single-tenancy, Beat 4 inconsistency. "Build process"
+  section calls out the 8-session structure and 14-commit history.
+  Setup section split into mock-call workflow and real-Zoom workflow.
+  Handoff email drafted to Dilan (HR), minimal forward-friendly,
+  Saturday morning send.
+- Decisions on tone: chose "candidate thought about the product" over
+  "candidate codes fast." README leads with decisions, not with
+  metrics. Email is intentionally bare — let the README do the work.
+- Next: send the email Saturday ~09:30 after a fresh-eyes re-read.
 
 ---
 
