@@ -9,8 +9,8 @@ Read `CLAUDE.md` first for conventions and scope rules. This file tells you *wha
 ## Current status
 
 - **Clock:** started Thu Apr 30, 14:00 Istanbul time
-- **Hour:** ~13.5 of 48
-- **Current session:** Session 5 complete, next is Session 6 (prompt tuning)
+- **Hour:** ~16.5 of 48
+- **Current session:** Session 6 complete, Session 7 next (demo recording)
 - **Minimum bar status:** ✅ audio · ✅ transcript · ✅ coaching · ⬜ demo video
 - **Blocker:** none
 
@@ -268,6 +268,25 @@ Append an entry here after every session. Keep it honest — this is for you, no
 - Verified: 30s mock dialogue with objection phrases ("disaster", "expensive") produced 2 suggestion cards. First card: tied budget objection to agency-burn signal, gave specific say_this + ask_this + watch_out. Second card: detected garbled prospect audio and warned the rep instead of fabricating coaching. Latency: 3s on critical-moment trigger, ~10s on debounce — both inside SOW 5-10s spec.
 - Notes: prompt grounding is working — Claude refused to invent Optimum7 facts and instead alerted on bad audio feed. The "silence is a feature" rule + "never invent facts" rule are doing real work.
 - Next: sleep, then Session 5 — UI polish + critical-moment end-to-end verification + Stop session edge cases.
+
+---
+
+### Session 6 — Prompt tuning evaluation (hour 14 → 16.5)
+- Done: drafted mock B2B discovery call script (docs/mock-call-script.md),
+  ran Round 1 evaluation with ChatGPT Voice driving prospect voice,
+  recorded results in docs/prompt-evaluation.md. 4/4 tested beats
+  produced specific, fact-grounded coaching. Agency-burn coaching
+  referenced PDP and mobile-drop numbers from prospect's own line —
+  the kind of specificity that turns generic LLM output into a real
+  demo moment.
+- Broke: Beat 4 produced internally inconsistent coaching once
+  (dropped a $8k figure then flagged "pricing anchor too early").
+  Self-corrected on next tick. Decided to ship as-is rather than
+  tune narrowly and risk regression on the strong patterns.
+- Learned: ChatGPT Voice is a great test rig. Edge TTS works too
+  but Voice mode is friction-free. Both feed CABLE Output cleanly
+  if Windows default output is set to CABLE Input.
+- Next: Session 7 — demo video recording.
 
 ---
 
