@@ -2,7 +2,7 @@
 
 Real-time AI sales coaching that listens to both sides of a live Zoom call and whispers suggestions to the rep while the conversation is still happening.
 
-**Demo (3 min, unlisted):** https://youtu.be/aj_hfYItWkY
+**Demo (5 min, unlisted):** https://youtu.be/aj_hfYItWkY
 
 ---
 
@@ -107,7 +107,7 @@ Deliberate cuts, not oversights.
 - **Auto-reconnect WebSocket** — I chose explicit user-driven Stop/Start over silent reconnection. Auto-reconnect creates edge cases around buffer state, duplicate Deepgram connections, and mid-session coaching context gaps. Predictable behavior matters more here than convenience.
 - **macOS BlackHole audio** — this is a Windows-only build. BlackHole would replace VB-Cable on macOS with ~30 minutes of config changes. Not implemented because the dev environment is Windows 11.
 - **Per-rep customization** — coaching tone and example library would vary by rep persona in production. Out of scope for the trial; phase-2 feature.
-- **Suggestion deduplication across turns** — the coaching engine doesn't track that it just surfaced "ask about budget" and may surface the same angle again on the next tick. Acceptable for a 3-minute demo; needs cross-turn memory for a real deployment.
+- **Suggestion deduplication across turns** — the coaching engine doesn't track that it just surfaced "ask about budget" and may surface the same angle again on the next tick. Acceptable for a 5-minute demo; needs cross-turn memory for a real deployment.
 
 ---
 
