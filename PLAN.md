@@ -9,9 +9,10 @@ Read `CLAUDE.md` first for conventions and scope rules. This file tells you *wha
 ## Current status
 
 - **Clock:** started Thu Apr 30, 14:00 Istanbul time
-- **Hour:** ~16.5 of 48
-- **Current session:** Session 6 complete, Session 7 next (demo recording)
-- **Minimum bar status:** ✅ audio · ✅ transcript · ✅ coaching · ⬜ demo video
+- **Hour:** ~18.5 of 48
+- **Current session:** Session 7 complete, Session 8 next (README + handoff email)
+- **Minimum bar status:** ✅ audio · ✅ transcript · ✅ coaching · ✅ DEMO VIDEO
+- **All four SOW minimum-bar items met. Remaining work is documentation + delivery.**
 - **Blocker:** none
 
 Update the three lines above at the start and end of every session.
@@ -268,6 +269,32 @@ Append an entry here after every session. Keep it honest — this is for you, no
 - Verified: 30s mock dialogue with objection phrases ("disaster", "expensive") produced 2 suggestion cards. First card: tied budget objection to agency-burn signal, gave specific say_this + ask_this + watch_out. Second card: detected garbled prospect audio and warned the rep instead of fabricating coaching. Latency: 3s on critical-moment trigger, ~10s on debounce — both inside SOW 5-10s spec.
 - Notes: prompt grounding is working — Claude refused to invent Optimum7 facts and instead alerted on bad audio feed. The "silence is a feature" rule + "never invent facts" rule are doing real work.
 - Next: sleep, then Session 5 — UI polish + critical-moment end-to-end verification + Stop session edge cases.
+
+---
+
+### Session 7 — Demo video recording (hour 16.5 → 18.5)
+- Done: installed OBS Studio for screen + multi-track audio capture,
+  reconfigured Voicemeeter Banana so I can hear ChatGPT through
+  headphones while CABLE Input still receives system audio
+  (VOICEMEETER VAIO routes to A1 headphones + A2 CABLE Input
+  simultaneously). Wrote demo script (~3 min): 30s intro/stack,
+  2 min mock-call replay with 4 beats from the eval rig, 30s outro.
+  Recorded in OBS, light-edited in Clipchamp (trim head/tail),
+  exported 1080p mp4, uploaded as Unlisted YouTube.
+- Link: https://youtu.be/aj_hfYItWkY
+- Notes: chose Beat 1, 2, 3, 4 (skipped 5-6 to keep demo tight).
+  Beat 2 (burned-by-agency) is the wow moment — Claude references
+  the prospect's own PDP redesign and 12% mobile drop in its
+  ask_this. Watch_out flagged "burned by agency, needs proof"
+  contextually.
+- Broke: nothing major. First take had a small audio level imbalance
+  (ChatGPT louder than my mic), Voicemeeter VAIO slider tweak
+  (-3dB) on retake fixed it.
+- Learned: OBS + Voicemeeter is the right Windows demo stack.
+  ChatGPT Voice as the prospect rig is a great repeatable asset
+  for both eval and demo — same prompt, same beats, predictable
+  pacing.
+- Next: Session 8 — README + Serhat handoff email.
 
 ---
 
