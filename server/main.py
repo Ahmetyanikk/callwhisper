@@ -101,8 +101,6 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     coaching_engine.start()
     sender_task = asyncio.create_task(sender(), name=f"ws-sender-{client_id}")
 
-    frame_counts: dict[str, int] = {"rep": 0, "prospect": 0}
-
     try:
         while True:
             message = await websocket.receive()
@@ -118,14 +116,8 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 payload = bytes(msg_bytes[1:])
                 if tag == 0x01:
                     await rep_stream.send_audio(payload)
-                    frame_counts["rep"] += 1
-                    if frame_counts["rep"] % 50 == 0:
-                        logger.info("[REP] forwarded %d frames", frame_counts["rep"])
                 elif tag == 0x02:
                     await prospect_stream.send_audio(payload)
-                    frame_counts["prospect"] += 1
-                    if frame_counts["prospect"] % 50 == 0:
-                        logger.info("[PROSPECT] forwarded %d frames", frame_counts["prospect"])
                 else:
                     logger.warning("unknown channel tag: 0x%02x", tag)
 

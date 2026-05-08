@@ -20,23 +20,29 @@
         <select id="prospect-select"></select>
         <button id="btn-test-prospect" class="btn-secondary">Test</button>
         <span id="prospect-rms" class="rms-result"></span>
+        <span id="prospect-warn" class="device-warn"></span>
       </div>
     </div>
     <div class="session-controls">
       <button id="btn-toggle">Start Session</button>
-      <span id="status-indicator" class="status-idle">&#9679; Idle</span>
+      <span id="status-indicator" class="status-idle">Idle</span>
     </div>
   </header>
   <main>
     <section id="panel-transcript">
       <h2>Transcript</h2>
-      <div id="transcript-log"></div>
+      <div id="transcript-log">
+        <p id="transcript-placeholder" class="panel-placeholder">Waiting for audio… Speak into the rep mic or play system audio.</p>
+      </div>
     </section>
     <section id="panel-coaching">
       <h2>Coaching</h2>
-      <div id="coaching-log"></div>
+      <div id="coaching-log">
+        <p id="coaching-placeholder" class="panel-placeholder">Listening for coaching opportunities…</p>
+      </div>
     </section>
   </main>
+  <div id="toast" class="toast hidden">Connection lost. Click Stop to reset.</div>
   <script type="module" src="app.js"></script>
 </body>
 </html>

@@ -61,6 +61,12 @@ select {
   min-width: 110px;
 }
 
+.device-warn {
+  font-size: 0.75rem;
+  color: #f59e0b;
+  font-style: italic;
+}
+
 .session-controls {
   display: flex;
   align-items: center;
@@ -68,10 +74,20 @@ select {
   margin-left: auto;
 }
 
-#status-indicator { font-size: 0.85rem; font-family: monospace; }
-.status-idle       { color: #6b7280; }
-.status-connecting { color: #f59e0b; }
-.status-live       { color: #22c55e; }
+#status-indicator {
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+
+#status-indicator::before {
+  content: "●";
+  margin-right: 5px;
+}
+
+.status-idle        { color: #6b7280; }
+.status-connecting  { color: #f59e0b; }
+.status-live        { color: #22c55e; }
+.status-disconnected{ color: #ef4444; }
 
 header h1 { font-size: 1.2rem; }
 
@@ -125,10 +141,24 @@ section h2 {
 
 p { font-size: 0.9rem; line-height: 1.5; color: #d1d5db; }
 
-.transcript-rep { color: #22c55e; }
-.transcript-prospect { color: #3b82f6; }
+.transcript-rep     { color: #22c55e; }
+.transcript-prospect{ color: #3b82f6; }
 .transcript-interim { opacity: 0.55; font-style: italic; }
-.transcript-ts { font-family: monospace; font-size: 0.82em; color: #9ca3af; }
+.transcript-ts      { font-family: monospace; font-size: 0.82em; color: #9ca3af; }
+
+.panel-placeholder {
+  color: #4b5563;
+  font-style: italic;
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 24px 0;
+  user-select: none;
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 .suggestion-card {
   border-left: 3px solid #374151;
@@ -138,9 +168,27 @@ p { font-size: 0.9rem; line-height: 1.5; color: #d1d5db; }
   display: flex;
   flex-direction: column;
   gap: 4px;
+  animation: card-in 0.18s ease-out;
 }
 
-.suggest-ts  { font-size: 0.75rem; color: #6b7280; font-family: monospace; }
+.suggest-ts    { font-size: 0.75rem; color: #6b7280; font-family: monospace; }
 .suggest-say   { color: #22c55e; }
 .suggest-ask   { color: #3b82f6; }
 .suggest-watch { color: #f59e0b; }
+
+.hidden { display: none !important; }
+
+.toast {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #7f1d1d;
+  color: #fecaca;
+  padding: 8px 22px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  z-index: 100;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}

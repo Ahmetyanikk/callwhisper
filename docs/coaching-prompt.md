@@ -142,11 +142,12 @@ Explicitly called out because models over-produce by default. Returning `{}` is 
 
 ## Model choice
 
-`claude-sonnet-4-6`. Reasoning:
+`claude-sonnet-4-5`. Reasoning:
 
 - Opus 4.7 is smarter but TTFT is 2-3 seconds even on short prompts. That breaks the 3-second SOW target.
-- Sonnet 4.6 with a ~1.5k token prompt + streaming returns first token in ~400ms, full JSON in ~1.2s.
+- Sonnet 4.5 with a ~1.5k token prompt + streaming returns first token in ~400ms, full JSON in ~1.2s.
 - Haiku 4.5 is faster still but produces noticeably weaker objection-handling suggestions in testing.
+- Sonnet 4.6 was tested but exhibited stricter silence-by-default behavior with our current prompt — returned `{}` on calls where 4.5 produced useful suggestions. Re-evaluate 4.6 during Session 6 prompt tuning once the prompt is more directive.
 
 Settings:
 - `max_tokens: 200` (JSON output is short)

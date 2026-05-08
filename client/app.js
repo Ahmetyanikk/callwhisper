@@ -11,6 +11,10 @@ const prospectRmsEl = document.querySelector("#prospect-rms");
 const statusIndicator = document.querySelector("#status-indicator");
 const transcriptLog = document.querySelector("#transcript-log");
 const coachingLog = document.querySelector("#coaching-log");
+const transcriptPlaceholder = document.querySelector("#transcript-placeholder");
+const coachingPlaceholder = document.querySelector("#coaching-placeholder");
+const prospectWarnEl = document.querySelector("#prospect-warn");
+const toastEl = document.querySelector("#toast");
 
 let ws = null;
 let sessionActive = false;
@@ -18,16 +22,28 @@ let repStream = null;
 let prospectStream = null;
 let repCtx = null;
 let prospectCtx = null;
+let repNode = null;
+let prospectNode = null;
 const pending = { rep: [], prospect: [] };
 const interim = { rep: null, prospect: null };
 
 function setStatus(state) {
-  const labels = { idle: "&#9679; Idle", connecting: "&#9679; Connecting...", live: "&#9679; Live" };
+  const labels = { idle: "Idle", connecting: "Connecting…", live: "Live", disconnected: "Disconnected" };
   statusIndicator.className = `status-${state}`;
-  statusIndicator.innerHTML = labels[state] ?? labels.idle;
+  statusIndicator.textContent = labels[state] ?? "Idle";
+}
+
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.remove("hidden");
+}
+
+function hideToast() {
+  toastEl.classList.add("hidden");
 }
 
 function appendTranscript(text) {
+  transcriptPlaceholder.classList.add("hidden");
   const p = document.createElement("p");
   p.textContent = text;
   transcriptLog.appendChild(p);
@@ -35,6 +51,7 @@ function appendTranscript(text) {
 }
 
 function renderSuggestion(msg) {
+  coachingPlaceholder.classList.add("hidden");
   const card = document.createElement("div");
   card.className = "suggestion-card";
 
@@ -44,9 +61,9 @@ function renderSuggestion(msg) {
   card.appendChild(ts);
 
   const fields = [
-    { key: "say_this",  cls: "suggest-say",   label: "Say this" },
-    { key: "ask_this",  cls: "suggest-ask",   label: "Ask this" },
-    { key: "watch_out", cls: "suggest-watch", label: "Watch out" },
+    { key: "say_this",  cls: "suggest-say",   label: "💬 Say this" },
+    { key: "ask_this",  cls: "suggest-ask",   label: "❓ Ask this" },
+    { key: "watch_out", cls: "suggest-watch", label: "⚠️ Watch out" },
   ];
   for (const { key, cls, label } of fields) {
     if (!msg[key]) continue;
@@ -65,6 +82,7 @@ function nowHHMMSS() {
 }
 
 function renderTranscript(msg) {
+  transcriptPlaceholder.classList.add("hidden");
   const ch = msg.channel;
   const label = ch === "rep" ? "Rep" : "Prospect";
   const ts = new Date(msg.ts).toTimeString().slice(0, 8);
@@ -136,10 +154,18 @@ async function initDevices() {
     const inputs = all.filter(d => d.kind === "audioinput");
     populateSelect(repSelect, inputs);
     populateSelect(prospectSelect, inputs);
-    const repDev = inputs.find(d => d.deviceId === "default") ?? inputs[0];
-    const prospectDev = inputs.find(d => /cable output|vb-cable|voicemeeter/i.test(d.label));
+
+    const repDev = inputs.find(d => /default|hyperx|fifine/i.test(d.label))
+                ?? inputs.find(d => d.deviceId === "default")
+                ?? inputs[0];
     if (repDev) repSelect.value = repDev.deviceId;
-    if (prospectDev) prospectSelect.value = prospectDev.deviceId;
+
+    const prospectDev = inputs.find(d => /cable output/i.test(d.label));
+    if (prospectDev) {
+      prospectSelect.value = prospectDev.deviceId;
+    } else {
+      prospectWarnEl.textContent = "No virtual audio device detected";
+    }
   } catch (err) {
     appendTranscript(`Error enumerating devices: ${err.message}`);
   }
@@ -196,6 +222,7 @@ async function startCapture() {
       throw err;
     }
     const node = new AudioWorkletNode(ctx, "pcm-processor");
+    if (tag === 0x01) repNode = node; else prospectNode = node;
     ctx.createMediaStreamSource(stream).connect(node);
     node.port.onmessage = (e) => sendFrame(tag, e.data);
     appendTranscript(`${tag === 0x01 ? "Rep" : "Prospect"}: capturing at ${ctx.sampleRate}Hz`);
@@ -228,7 +255,12 @@ function openWebSocket() {
   });
 
   ws.addEventListener("close", () => {
-    if (sessionActive) appendTranscript(`Status: disconnected at ${nowHHMMSS()}`);
+    // sessionActive=false means we closed intentionally via stopSession — no toast needed
+    if (sessionActive) {
+      setStatus("disconnected");
+      showToast("Connection lost. Click Stop to reset.");
+      ws = null;
+    }
   });
 
   ws.addEventListener("error", () => {
@@ -238,21 +270,37 @@ function openWebSocket() {
 
 async function stopSession() {
   sessionActive = false;
+  hideToast();
+
   if (ws) { ws.close(); ws = null; }
+
   for (const stream of [repStream, prospectStream]) {
     if (stream) stream.getTracks().forEach(t => t.stop());
   }
   repStream = null;
   prospectStream = null;
+
+  if (repNode) { repNode.disconnect(); repNode = null; }
+  if (prospectNode) { prospectNode.disconnect(); prospectNode = null; }
+
   for (const ctx of [repCtx, prospectCtx]) {
     if (ctx && ctx.state !== "closed") await ctx.close();
   }
   repCtx = null;
   prospectCtx = null;
+
   pending.rep.length = 0;
   pending.prospect.length = 0;
   interim.rep = null;
   interim.prospect = null;
+
+  transcriptLog.innerHTML = "";
+  coachingLog.innerHTML = "";
+  transcriptLog.appendChild(transcriptPlaceholder);
+  coachingLog.appendChild(coachingPlaceholder);
+  transcriptPlaceholder.classList.remove("hidden");
+  coachingPlaceholder.classList.remove("hidden");
+
   setStatus("idle");
   btnToggle.textContent = "Start Session";
   btnToggle.disabled = false;
@@ -268,8 +316,8 @@ async function startSession() {
     btnToggle.textContent = "Stop Session";
     btnToggle.disabled = false;
   } catch (err) {
-    appendTranscript(`Error: ${err.message}`);
     await stopSession();
+    appendTranscript(`Error starting session: ${err.message}`);
   }
 }
 
